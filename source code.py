@@ -298,18 +298,52 @@ def generate_html_form(paragraph_and_questions, output_filename="lesson.html"):
 # -------------------------------------------------------------------
 
 
-def check_answers(user_answers):
-    feedback_list = []
+# Make sure to import necessary modules and define client and model_name before using this function
+# For example:
+# from your_ai_library import Client, SystemMessage, UserMessage
+# client = Client(api_key='your_api_key')
+# model_name = 'your_model_name'
+
+def check_answers(user_answers, paragraph_questions):
+    # Construct the prompt for the AI
+    prompt = (
+        "Here is a paragraph, a set of questions, and the student's answers to those questions.\n\n"
+        "Paragraph and Questions:\n"
+        f"{paragraph_questions}\n\n"
+        "Student's Answers:\n"
+    )
     
+    # Append each answer with its corresponding question number
     for i, ans in enumerate(user_answers, start=1):
-        if ans.strip():
-            feedback_list.append(f"Q{i}: You answered '{ans}'. Great attempt! " 
-                                 "Consider the usage and context of the vocabulary to refine your answer.")
-        else:
-            feedback_list.append(f"Q{i}: No answer provided. Try to formulate an answer next time.")
-
-    return "\n".join(feedback_list)
-
+        prompt += f"Q{i}: {ans}\n"
+    
+    # Instruct the AI to provide feedback for each answer
+    prompt += (
+        "\nPlease review each answer and provide feedback on its correctness. "
+        "If the answer is correct, acknowledge it. If not, provide guidance or hints to help improve the answer."
+    )
+    
+    try:
+        # Make a request to the OpenAI API
+        response = client.complete(
+            model=model_name,
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant specialized in educational content."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=300,
+            top_p=1.0
+        )
+        
+        # Extract the AI's feedback from the response
+        ai_feedback = response.choices[0].message['content'].strip()
+        
+        return ai_feedback
+    
+    except Exception as e:
+        # Handle potential errors gracefully
+        return f"An error occurred while generating feedback: {str(e)}"
 
 # -------------------------------------------------------------------
 # Main flow
@@ -351,7 +385,7 @@ def main():
         "Q5 final reply"
     ]
     print("Simulating user answers submission and checking...\n")
-    feedback = check_answers(user_answers)
+    feedback = check_answers(user_answers,paragraph_and_questions)
     print("Feedback to user:\n", feedback)
 
     conn.close()
